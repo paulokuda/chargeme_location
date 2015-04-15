@@ -7,8 +7,11 @@
 //
 
 import UIKit
+//location
+import CoreLocation
 
-class VC_borrow: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class VC_borrow: UIViewController, UITableViewDelegate, UITableViewDataSource, CLLocationManagerDelegate {
+    let locationManager = CLLocationManager()
     @IBOutlet weak var deviceTextField: UITextField!
     @IBOutlet weak var chargerTableView: UITableView!
     @IBOutlet weak var slider: UISlider!
@@ -20,8 +23,9 @@ class VC_borrow: UIViewController, UITableViewDelegate, UITableViewDataSource {
     // charger: String of the most recently added/selected charger, variable passed back from the add_charger controller
     var charger = "none"
     // chargers: Array of charger objs loaded from parse
-    var chargers = [AnyObject]()
-    
+    var chargers = [AnyObject]();
+    var requestObjectID = "";
+
     
     @IBAction func findLenderButton(sender: AnyObject)
         {
@@ -30,7 +34,13 @@ class VC_borrow: UIViewController, UITableViewDelegate, UITableViewDataSource {
             request.setObject(selectedCharger, forKey: "chargerId")
             request.setObject(requester, forKey: "requester")
             request.setObject(sliderValue, forKey: "minutesRequested")
-            //add request.setObject(LOCATION, forKey: "requesterLocation")
+//            add request.setObject(LOCATION, forKey: "requesterLocation")
+            //location
+            self.locationManager.delegate = self;
+            self.locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+            self.locationManager.requestWhenInUseAuthorization();
+            self.locationManager.startUpdatingLocation();
+            //            add request.setObject(point, forKey: "requesterLocation")
 
 //            NSLog(selectedCharger)
             NSLog(requester)
@@ -38,11 +48,15 @@ class VC_borrow: UIViewController, UITableViewDelegate, UITableViewDataSource {
                 (success: Bool!, error: NSError!) -> Void in
                 if (success != nil) {
                     NSLog("Object created with id: \(request.objectId)")
+                    self.requestObjectID = request.objectId
                 } else {
                     NSLog("SHIT")
                     NSLog("%@", error)
                 }
             }
+        
+
+            
 
             // save device and time duration to parse in that request object, along with user requesting
         //search for other users who have that charger in order of distance. Might want another function or class to do this?
@@ -134,5 +148,75 @@ class VC_borrow: UIViewController, UITableViewDelegate, UITableViewDataSource {
 //        PFUser.currentUser().saveEventually()
 //        chargerTableView.reloadData()
     }
+    
+    
+    //location
+    func locationManager(manager: CLLocationManager!, didUpdateLocations locations: [AnyObject]!) {
+        CLGeocoder().reverseGeocodeLocation(manager.location, completionHandler: { (placemarks, error) -> Void in
+            if (error != nil) {
+                println("Error:" + error.localizedDescription);
+                return;
+            }
+            if (placemarks.count > 0){
+                print("placemarks count is greater than 0");
+                let pm = placemarks[0] as CLPlacemark;
+                self.displayLocationInfo(pm);
+            }
+            else {
+                println("Error with data");
+            }
+        })
+    }
+    
+    
+    func displayLocationInfo(placemark: CLPlacemark) {
+        println("made is to displayLocationInfo function");
+        self.locationManager.stopUpdatingLocation();
+//        var location = placemark.location;
+        
+        //        println(placemark.location);
+        //        println(distance);
+        //        ParseGeoPoint point = new ParseGeoPoint(30.0, -20,0);
+        var point = PFGeoPoint(latitude: placemark.location.coordinate.latitude, longitude: placemark.location.coordinate.longitude);
+        //        let distance = point.distanceFromLocation(point);
+        //        println(distance);
+        println("created a geopoint object");
+        println(point.distanceInMilesTo(point));
+        
+        var query = PFQuery(className:"Request")
+        query.getObjectInBackgroundWithId(requestObjectID) {
+            (request: PFObject!, error: NSError!) -> Void in
+            if error != nil {
+                println(error)
+            } else {
+                request["location"] = point;
+                request.saveInBackground()
+            }
+        }
+//        if (PFUser.currentUser() != nil){
+//            PFUser.currentUser().setValue(point, forKey: "location");
+//            PFUser.currentUser().saveEventually();
+//            println("successfuly saved geopoint to parse");
+            
+//        }
+//        else {
+//            println("user is nil");
+//        }
+        //        println(placemark.location);
+        //        var locationString = String(location);
+//                println(placemark.location.coordinate.latitude);
+//                println(placemark.location.coordinate.longitude);
+        //        println(placemark.locality)
+        //        println(placemark.postalCode)
+        //        println(placemark.location);
+        //        println(placemark.subLocality);
+        //        println(placemark.locality);
+    }
+    
+    func locationManager(manager: CLLocationManager!, didFailWithError error: NSError!) {
+        println("Error: " + error.localizedDescription);
+    }
+    
+
 }
 

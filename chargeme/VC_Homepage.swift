@@ -8,6 +8,8 @@
 
 import UIKit
 
+
+
 class VC_Homepage: UIViewController {
     
     @IBOutlet weak var sendnotif: UIButton!
@@ -41,6 +43,8 @@ class VC_Homepage: UIViewController {
             nameLabel.hidden = false
             textDescription.hidden = true
             facebookLoginButton.hidden = true
+            
+            
         }
     }
 
